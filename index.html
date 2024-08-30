@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Manager SPA</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+
+        #app {
+            width: 90%;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        nav {
+            background-color: #333;
+            color: #fff;
+            padding: 15px;
+            text-align: center;
+            border-radius: 5px;
+        }
+
+        nav a {
+            color: #fff;
+            margin: 0 15px;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        nav a:hover {
+            text-decoration: underline;
+        }
+
+        #content {
+            margin-top: 20px;
+        }
+
+        #search {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1em;
+        }
+
+        .task {
+            background-color: #fff;
+            padding: 15px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            position: relative;
+        }
+
+        .task h3 {
+            margin: 0;
+            font-size: 1.2em;
+            color: #333;
+        }
+
+        .task p {
+            margin: 5px 0;
+            color: #666;
+        }
+
+        .task-actions {
+            margin-top: 10px;
+            display: flex;
+            justify-content: flex-end;
+            position: relative;
+            z-index: 1;
+        }
+
+        .task-actions button {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            padding: 8px 12px;
+            margin-left: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+
+        .task-actions button:hover {
+            background-color: #0056b3;
+        }
+
+        #task-form, #edit-task-form {
+            display: flex;
+            flex-direction: column;
+        }
+
+        #task-form label, #edit-task-form label {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        #task-form input, #task-form textarea, 
+        #edit-task-form input, #edit-task-form textarea {
+            padding: 8px;
+            margin-top: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 1em;
+        }
+
+        #task-form button, #edit-task-form button {
+            background-color: #28a745;
+            color: #fff;
+            border: none;
+            padding: 10px;
+            margin-top: 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+        }
+
+        #task-form button:hover, #edit-task-form button:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <nav>
+            <a href="/" id="view-tasks">Tasks</a>
+            <a href="/add-task" id="add-task">Add Task</a>
+        </nav>
+        <div id="content">
+         
+        </div>
+    </div>
+    <script>
+       
+        if (!localStorage.getItem('tasks')) {
+            localStorage.setItem('tasks', JSON.stringify([]));
+        }
+
+        function fetchTasks() {
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    resolve(JSON.parse(localStorage.getItem('tasks')));
+                }, 100);
+            });
+        }
+
+        function saveTasks(tasks) {
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    localStorage.setItem('tasks', JSON.stringify(tasks));
+                    resolve();
+                }, 100);
+            });
+        }
+
+        async function displayTasks() {
+            const tasks = await fetchTasks();
+            let taskListHTML = `
+                <input type="text" id="search" placeholder="Search tasks...">
+                <div id="task-list"></div>
+            `;
+            document.getElementById('content').innerHTML = taskListHTML;
+            renderTaskList(tasks);
+            
+        
+            document.getElementById('search').addEventListener('keyup', searchTasks);
+        }
+
+      
+        function renderTaskList(tasks) {
+            let taskListHTML = '';
+            tasks.forEach(task => {
+                taskListHTML += `
+                    <div class="task" data-id="${task.id}" onclick="viewTaskDetails('${task.id}')">
+                        <h3>${task.title}</h3>
+                        <p>${task.description}</p>
+                        <p><strong>Due Date:</strong> ${task.dueDate}</p>
+                        <div class="task-actions">
+                            <button onclick="editTask('${task.id}'); event.stopPropagation();">Edit</button>
+                            <button onclick="deleteTask('${task.id}'); event.stopPropagation();">Delete</button>
+                        </div>
+                    </div>
+                `;
+            });
+            document.getElementById('task-list').innerHTML = taskListHTML;
+        }
+
+        async function searchTasks() {
+            const searchQuery = document.getElementById('search').value.toLowerCase();
+            const tasks = await fetchTasks();
+            const filteredTasks = tasks.filter(task =>
+                task.title.toLowerCase().includes(searchQuery) ||
+                task.description.toLowerCase().includes(searchQuery)
+            );
+            renderTaskList(filteredTasks);
+        }
+
+      
+        function displayAddTaskForm() {
+            document.getElementById('content').innerHTML = `
+                <h2>Add New Task</h2>
+                <form id="task-form">
+                    <label>Title:</label>
+                    <input type="text" id="task-title" required>
+                    <label>Description:</label>
+                    <textarea id="task-description" required></textarea>
+                    <label>Due Date:</label>
+                    <input type="date" id="task-due-date" required>
+                    <button type="submit">Add Task</button>
+                </form>
+            `;
+            
+            document.getElementById('task-form').onsubmit = function (e) {
+                e.preventDefault();
+                addTask();
+            };
+        }
+
+  
+        async function addTask() {
+            const tasks = await fetchTasks();
+            const newTask = {
+                id: Date.now().toString(),
+                title: document.getElementById('task-title').value,
+                description: document.getElementById('task-description').value,
+                dueDate: document.getElementById('task-due-date').value,
+            };
+            tasks.push(newTask);
+            await saveTasks(tasks);
+            window.history.pushState({}, '', '/');
+            displayTasks();
+        }
+
+        async function deleteTask(id) {
+            let tasks = await fetchTasks();
+            tasks = tasks.filter(task => task.id !== id);
+            await saveTasks(tasks);
+            displayTasks();
+        }
+
+      
+        async function editTask(id) {
+            const tasks = await fetchTasks();
+            const task = tasks.find(t => t.id === id);
+            
+            document.getElementById('content').innerHTML = `
+                <h2>Edit Task</h2>
+                <form id="edit-task-form">
+                    <label>Title:</label>
+                    <input type="text" id="edit-task-title" value="${task.title}" required>
+                    <label>Description:</label>
+                    <textarea id="edit-task-description" required>${task.description}</textarea>
+                    <label>Due Date:</label>
+                    <input type="date" id="edit-task-due-date" value="${task.dueDate}" required>
+                    <button type="submit">Update Task</button>
+                    <button type="button" onclick="deleteTask('${task.id}');">Delete Task</button>
+                </form>
+            `;
+            
+            document.getElementById('edit-task-form').onsubmit = function (e) {
+                e.preventDefault();
+                updateTask(id);
+            };
+        }
+
+     
+        async function updateTask(id) {
+            const tasks = await fetchTasks();
+            const task = tasks.find(t => t.id === id);
+            task.title = document.getElementById('edit-task-title').value;
+            task.description = document.getElementById('edit-task-description').value;
+            task.dueDate = document.getElementById('edit-task-due-date').value;
+            await saveTasks(tasks);
+            window.history.pushState({}, '', '/');
+            displayTasks();
+        }
+
+     
+        async function viewTaskDetails(id) {
+            const tasks = await fetchTasks();
+            const task = tasks.find(t => t.id === id);
+            document.getElementById('content').innerHTML = `
+                <h2>Task Details</h2>
+                <h3>${task.title}</h3>
+                <p><strong>Description:</strong> ${task.description}</p>
+                <p><strong>Due Date:</strong> ${task.dueDate}</p>
+                <div class="task-actions">
+                    <button onclick="editTask('${task.id}')">Edit</button>
+                    <button onclick="deleteTask('${task.id}')">Delete</button>
+                </div>
+            `;
+        }
+
+        function router() {
+            const path = window.location.pathname;
+            if (path === '/' || path === '/tasks') {
+                displayTasks();
+            } else if (path === '/add-task') {
+                displayAddTaskForm();
+            } else if (path.startsWith('/task/')) {
+                const id = path.split('/').pop();
+                viewTaskDetails(id);
+            }
+        }
+
+        window.onpopstate = router;
+        window.onload = router;
+
+ 
+        document.getElementById('view-tasks').addEventListener('click', function(e) {
+            e.preventDefault();
+            window.history.pushState({}, '', '/');
+            router();
+        });
+
+        document.getElementById('add-task').addEventListener('click', function(e) {
+            e.preventDefault();
+            window.history.pushState({}, '', '/add-task');
+            router();
+        });
+    </script>
+</body>
+</html>
